@@ -49,8 +49,10 @@ jobs:
           -scheme Unity-iPhone \
           -configuration Release \
           -destination generic/platform=iOS \
-          CODE_SIGN_STYLE=Automatic \
+          CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Development" \
+          PROVISIONING_PROFILE_SPECIFIER="iOS Team Provisioning Profile: com.stylix.tryon" \
+          DEVELOPMENT_TEAM=6DZRWX4XK8 \
           archive \
           -archivePath $RUNNER_TEMP/app.xcarchive
 
