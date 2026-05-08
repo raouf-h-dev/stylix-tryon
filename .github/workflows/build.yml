@@ -42,10 +42,6 @@ jobs:
       run: |
         ls ~/Library/MobileDevice/Provisioning\ Profiles/
         security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | grep -A1 "<key>Name</key>"
-    - name: Fix signing in project
-      run: |
-        sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' Unity-iPhone.xcodeproj/project.pbxproj
-        sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = "";/g' Unity-iPhone.xcodeproj/project.pbxproj
     - name: Build Xcode project
       run: |
         xcodebuild \
@@ -53,9 +49,10 @@ jobs:
           -scheme Unity-iPhone \
           -configuration Release \
           -destination generic/platform=iOS \
-          CODE_SIGN_STYLE=Automatic \
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="Apple Development" \
           DEVELOPMENT_TEAM=6DZRWX4XK8 \
-          -allowProvisioningUpdates \
+          PROVISIONING_PROFILE="a10f52a8-23cc-424b-8b03-58c5bfcd291d" \
           archive \
           -archivePath $RUNNER_TEMP/app.xcarchive
     - name: Export IPA
