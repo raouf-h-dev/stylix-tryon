@@ -51,8 +51,13 @@ jobs:
         ls ~/Library/MobileDevice/Provisioning\ Profiles/
         security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | grep -A1 "<key>Name</key>"
 
+- name: Fix signing in project
+      run: |
+        sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' Unity-iPhone.xcodeproj/project.pbxproj
+        sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = "";/g' Unity-iPhone.xcodeproj/project.pbxproj
 
-    - name: Build Xcode project
+
+- name: Build Xcode project
       run: |
         xcodebuild \
           -project Unity-iPhone.xcodeproj \
@@ -61,6 +66,7 @@ jobs:
           -destination generic/platform=iOS \
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=6DZRWX4XK8 \
+          -allowProvisioningUpdates \
           archive \
           -archivePath $RUNNER_TEMP/app.xcarchive
 
