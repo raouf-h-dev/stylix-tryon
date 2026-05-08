@@ -51,7 +51,7 @@ jobs:
           -destination generic/platform=iOS \
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Development" \
-          DEVELOPMENT_TEAM=6DZRWX4XK8 \
+          DEVELOPMENT_TEAM=39Z5QDFQQG \
           PROVISIONING_PROFILE="a10f52a8-23cc-424b-8b03-58c5bfcd291d" \
           archive \
           -archivePath $RUNNER_TEMP/app.xcarchive
