@@ -46,6 +46,12 @@ jobs:
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
+    - name: Debug Provisioning Profile
+      run: |
+        ls ~/Library/MobileDevice/Provisioning\ Profiles/
+        security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | grep -A1 "<key>Name</key>"
+
+
     - name: Build Xcode project
       run: |
         xcodebuild \
