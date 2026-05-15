@@ -88,6 +88,11 @@ jobs:
           </plist>
           EOF
 
+      - name: Unlock keychain for codesign
+        run: |
+         security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+         security set-key-partition-list -S apple-tool:,apple: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+
       # 7. Build archive
       - name: Run xcodebuild archive
         run: |
@@ -100,7 +105,8 @@ jobs:
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
             -archivePath $RUNNER_TEMP/app.xcarchive
-
+        env:
+         CODESIGN_ALLOCATE: /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/codesign_allocate
       # 8. Export IPA
       - name: Export IPA
         run: |
