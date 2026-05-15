@@ -15,6 +15,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Pull LFS files
+        run: |
+          git lfs install
+          git lfs pull
+          echo "=== Verify libraries are real binaries ==="
+          ls -lh Libraries/*.a 2>/dev/null | head -10
+          head -c 8 Libraries/libiPhone-lib.a | xxd
+              
       - name: Check library files
         run: |
           echo "=== File sizes ==="
