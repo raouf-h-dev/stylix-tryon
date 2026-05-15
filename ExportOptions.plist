@@ -7,11 +7,6 @@
     <key>teamID</key>
     <string>39Z5QDFQQG</string>
     <key>signingStyle</key>
-    <string>manual</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.stylix.tryon</key>
-        <string>com.stylix.tryon</string>
-    </dict>
+    <string>automatic</string>
 </dict>
 </plist>
