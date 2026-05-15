@@ -32,17 +32,30 @@ jobs:
         env:
           PROVISION_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
 
-          # Extract UUID and install with UUID filename (required for Manual signing lookup)
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" \
-            /dev/stdin <<< $(security cms -D -i /tmp/profile.mobileprovision))
+          # Extract UUID
+          PROFILE_UUID=$( security cms -D -i /tmp/profile.mobileprovision \
+            | grep -A1 "<key>UUID</key>" \
+            | grep "<string>" \
+            | sed 's/.*<string>\(.*\)<\/string>.*/\1/' \
+            | tr -d '[:space:]' )
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+          echo "Extracted UUID: $PROFILE_UUID"
 
+          # Old location (Xcode < 16)
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp /tmp/profile.mobileprovision \
             ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
-          echo "Installed as ${PROFILE_UUID}.mobileprovision"
+
+          # New location (Xcode 16+)
+          mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
+          cp /tmp/profile.mobileprovision \
+            ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+
+          echo "Installed profile in both locations:"
+          ls ~/Library/MobileDevice/Provisioning\ Profiles/
+          ls ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
 
       - name: Patch pbxproj — Manual signing for Unity-iPhone only
         run: |
