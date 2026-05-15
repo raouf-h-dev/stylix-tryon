@@ -32,7 +32,16 @@ jobs:
           PROVISION_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo $PROVISION_BASE64 | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          echo $PROVISION_BASE64 | base64 --decode > /tmp/profile.mobileprovision
+
+          # Xcode finds profiles by UUID filename — must be named {UUID}.mobileprovision
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin \
+            <<< $(security cms -D -i /tmp/profile.mobileprovision))
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+
+          cp /tmp/profile.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+          echo "Installed profile as ${PROFILE_UUID}.mobileprovision"
 
       - name: Patch Xcode project
         run: |
@@ -40,8 +49,8 @@ jobs:
           import re, subprocess, os
 
           profile_path = os.path.expanduser(
-              "~/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
-          )
+              "~/Library/MobileDevice/Provisioning Profiles/"
+          ) + os.environ["PROFILE_UUID"] + ".mobileprovision"
 
           result = subprocess.run(
               ["security", "cms", "-D", "-i", profile_path],
@@ -49,91 +58,77 @@ jobs:
           )
           plist_text = result.stdout
 
-          uuid = re.search(r"<key>UUID</key>\s*<string>([^<]+)</string>", plist_text).group(1)
-          print(f"✅ Profile UUID: {uuid}")
-
+          uuid = os.environ["PROFILE_UUID"]
           raw_app_id = re.search(
               r"<key>application-identifier</key>\s*<string>([^<]+)</string>", plist_text
           ).group(1)
           bundle_id = raw_app_id.split(".", 1)[1]
-          print(f"✅ Profile bundle ID: {bundle_id}")
-
-          team_id = re.search(
-              r"<key>TeamIdentifier</key>\s*<array>\s*<string>([^<]+)</string>", plist_text
-          ).group(1)
-          print(f"✅ Profile team ID: {team_id}")
-
-          # Export for use in later steps
-          with open(os.environ["GITHUB_ENV"], "a") as f:
-              f.write(f"PROFILE_UUID={uuid}\n")
-              f.write(f"BUNDLE_ID={bundle_id}\n")
+          print(f"UUID: {uuid}")
+          print(f"Bundle ID from profile: {bundle_id}")
 
           with open("Unity-iPhone.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
 
-          # Print what bundle IDs currently exist in the project (diagnostic)
-          current_ids = re.findall(r"PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);", content)
-          print(f"📋 Bundle IDs in project BEFORE patch: {set(current_ids)}")
-
-          # Replace ALL bundle IDs with the one from the profile
-          content = re.sub(
-              r"(PRODUCT_BUNDLE_IDENTIFIER = )[^;]+(;)",
-              lambda m: f"{m.group(1)}{bundle_id}{m.group(2)}",
-              content
+          # --- Step 1: Find Unity-iPhone target's build configuration IDs ---
+          # Get the configurationList ID for the Unity-iPhone native target
+          unity_target_match = re.search(
+              r'[A-Z0-9]{24} /\* Unity-iPhone \*/ = \{[^}]*?'
+              r'buildConfigurationList = ([A-Z0-9]{24})',
+              content, re.DOTALL
           )
+          unity_config_list_id = unity_target_match.group(1)
+          print(f"Unity-iPhone configurationList: {unity_config_list_id}")
 
-          # Verify after patch
-          patched_ids = re.findall(r"PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);", content)
-          print(f"📋 Bundle IDs in project AFTER patch: {set(patched_ids)}")
+          # Get the individual Debug/Release config IDs from that list
+          config_list_block = re.search(
+              rf'{unity_config_list_id} /\* Build configuration list.*?\}};',
+              content, re.DOTALL
+          ).group(0)
+          unity_config_ids = re.findall(r'([A-Z0-9]{24}) /\* (?:Debug|Release) \*/', config_list_block)
+          print(f"Unity-iPhone config IDs: {unity_config_ids}")
 
-          # Inject UUID — if key exists replace it, otherwise insert it
-          if "PROVISIONING_PROFILE =" in content:
-              count = len(re.findall(r"PROVISIONING_PROFILE =", content))
-              print(f"📋 Found {count} PROVISIONING_PROFILE entries, replacing all")
-              content = re.sub(
-                  r'PROVISIONING_PROFILE = [^;]*;',
-                  f'PROVISIONING_PROFILE = "{uuid}";',
-                  content
+          # --- Step 2: Patch only Unity-iPhone's config blocks ---
+          def patch_config_block(block, uuid, bundle_id):
+              # Set bundle ID
+              block = re.sub(
+                  r'(PRODUCT_BUNDLE_IDENTIFIER = )[^;]+(;)',
+                  lambda m: f"{m.group(1)}{bundle_id}{m.group(2)}",
+                  block
               )
-          else:
-              print("📋 No PROVISIONING_PROFILE key found — injecting after CODE_SIGN_STYLE = Manual")
-              content = content.replace(
-                  "CODE_SIGN_STYLE = Manual;",
-                  f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE = "{uuid}";'
+              # Set Manual signing
+              block = re.sub(r'CODE_SIGN_STYLE = [^;]+;', 'CODE_SIGN_STYLE = Manual;', block)
+              # Set provisioning profile UUID
+              if 'PROVISIONING_PROFILE =' in block:
+                  block = re.sub(
+                      r'PROVISIONING_PROFILE = [^;]*;',
+                      f'PROVISIONING_PROFILE = "{uuid}";',
+                      block
+                  )
+              else:
+                  block = block.replace(
+                      'CODE_SIGN_STYLE = Manual;',
+                      f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE = "{uuid}";'
+                  )
+              block = re.sub(
+                  r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
+                  'PROVISIONING_PROFILE_SPECIFIER = "";',
+                  block
               )
+              return block
 
-          content = re.sub(
-              r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
-              'PROVISIONING_PROFILE_SPECIFIER = "";',
-              content
-          )
-
-          # Force UnityFramework to Automatic signing
-          # Target sections are separated by their names, so find the UnityFramework block
-          def fix_unity_framework(m):
-              return m.group(0).replace("CODE_SIGN_STYLE = Manual", "CODE_SIGN_STYLE = Automatic")
-
-          content = re.sub(
-              r'\/\* UnityFramework \*\/.*?(?=\/\* [A-Z])',
-              fix_unity_framework,
-              content,
-              flags=re.DOTALL
-          )
+          for config_id in unity_config_ids:
+              # Match the full XCBuildConfiguration block for this ID
+              pattern = rf'({config_id} /\* (?:Debug|Release) \*/ = \{{)(.*?)(\}};)'
+              def replacer(m):
+                  return m.group(1) + patch_config_block(m.group(2), uuid, bundle_id) + m.group(3)
+              content = re.sub(pattern, replacer, content, flags=re.DOTALL)
+              print(f"Patched config block {config_id}")
 
           with open("Unity-iPhone.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
 
-          print("✅ Patching complete.")
+          print("Done.")
           EOF
-
-      - name: Debug — show signing section of pbxproj
-        run: |
-          echo "=== PROVISIONING_PROFILE entries ==="
-          grep -n "PROVISIONING_PROFILE" Unity-iPhone.xcodeproj/project.pbxproj || echo "(none found)"
-          echo "=== BUNDLE_ID entries ==="
-          grep -n "PRODUCT_BUNDLE_IDENTIFIER" Unity-iPhone.xcodeproj/project.pbxproj
-          echo "=== CODE_SIGN_STYLE entries ==="
-          grep -n "CODE_SIGN_STYLE" Unity-iPhone.xcodeproj/project.pbxproj
 
       - name: Run xcodebuild
         run: |
@@ -142,14 +137,10 @@ jobs:
             -scheme Unity-iPhone \
             -configuration Release \
             -destination generic/platform=iOS \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE="$PROFILE_UUID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
-            -archivePath /Users/runner/work/_temp/app.xcarchive \
-            -allowProvisioningUpdates
+            -archivePath /Users/runner/work/_temp/app.xcarchive
 
       - name: Export IPA
         run: |
