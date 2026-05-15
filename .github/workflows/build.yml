@@ -50,54 +50,72 @@ jobs:
           plist_text = result.stdout
 
           uuid = re.search(r"<key>UUID</key>\s*<string>([^<]+)</string>", plist_text).group(1)
-          print(f"Profile UUID: {uuid}")
+          print(f"✅ Profile UUID: {uuid}")
 
           raw_app_id = re.search(
               r"<key>application-identifier</key>\s*<string>([^<]+)</string>", plist_text
           ).group(1)
           bundle_id = raw_app_id.split(".", 1)[1]
-          print(f"Profile bundle ID: {bundle_id}")
+          print(f"✅ Profile bundle ID: {bundle_id}")
 
-          # Export UUID so the xcodebuild step can use it on the command line too
-          with open(os.environ["GITHUB_ENV"], "a") as env_file:
-              env_file.write(f"PROFILE_UUID={uuid}\n")
+          team_id = re.search(
+              r"<key>TeamIdentifier</key>\s*<array>\s*<string>([^<]+)</string>", plist_text
+          ).group(1)
+          print(f"✅ Profile team ID: {team_id}")
+
+          # Export for use in later steps
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"PROFILE_UUID={uuid}\n")
+              f.write(f"BUNDLE_ID={bundle_id}\n")
 
           with open("Unity-iPhone.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
 
-          # Fix bundle ID everywhere (Unity-iPhone AND UnityFramework will both get it,
-          # which is fine — UnityFramework will be switched to Automatic anyway)
+          # Print what bundle IDs currently exist in the project (diagnostic)
+          current_ids = re.findall(r"PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);", content)
+          print(f"📋 Bundle IDs in project BEFORE patch: {set(current_ids)}")
+
+          # Replace ALL bundle IDs with the one from the profile
           content = re.sub(
               r"(PRODUCT_BUNDLE_IDENTIFIER = )[^;]+(;)",
               lambda m: f"{m.group(1)}{bundle_id}{m.group(2)}",
               content
           )
 
-          # Inject or replace PROVISIONING_PROFILE UUID
-          if "PROVISIONING_PROFILE = " in content:
+          # Verify after patch
+          patched_ids = re.findall(r"PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);", content)
+          print(f"📋 Bundle IDs in project AFTER patch: {set(patched_ids)}")
+
+          # Inject UUID — if key exists replace it, otherwise insert it
+          if "PROVISIONING_PROFILE =" in content:
+              count = len(re.findall(r"PROVISIONING_PROFILE =", content))
+              print(f"📋 Found {count} PROVISIONING_PROFILE entries, replacing all")
               content = re.sub(
                   r'PROVISIONING_PROFILE = [^;]*;',
                   f'PROVISIONING_PROFILE = "{uuid}";',
                   content
               )
           else:
-              # No existing key — inject it next to every CODE_SIGN_STYLE = Manual line
+              print("📋 No PROVISIONING_PROFILE key found — injecting after CODE_SIGN_STYLE = Manual")
               content = content.replace(
                   "CODE_SIGN_STYLE = Manual;",
                   f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE = "{uuid}";'
               )
 
-          # Clear specifier (UUID takes precedence)
           content = re.sub(
               r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
               'PROVISIONING_PROFILE_SPECIFIER = "";',
               content
           )
 
-          # Switch UnityFramework to Automatic so it doesn't need its own profile
+          # Force UnityFramework to Automatic signing
+          # Target sections are separated by their names, so find the UnityFramework block
+          def fix_unity_framework(m):
+              return m.group(0).replace("CODE_SIGN_STYLE = Manual", "CODE_SIGN_STYLE = Automatic")
+
           content = re.sub(
-              r'(\/\* Begin PBXNativeTarget section \*\/.*?UnityFramework.*?CODE_SIGN_STYLE = )Manual',
-              r'\1Automatic',
+              r'\/\* UnityFramework \*\/.*?(?=\/\* [A-Z])',
+              fix_unity_framework,
               content,
               flags=re.DOTALL
           )
@@ -105,8 +123,17 @@ jobs:
           with open("Unity-iPhone.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
 
-          print("Patching complete.")
+          print("✅ Patching complete.")
           EOF
+
+      - name: Debug — show signing section of pbxproj
+        run: |
+          echo "=== PROVISIONING_PROFILE entries ==="
+          grep -n "PROVISIONING_PROFILE" Unity-iPhone.xcodeproj/project.pbxproj || echo "(none found)"
+          echo "=== BUNDLE_ID entries ==="
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER" Unity-iPhone.xcodeproj/project.pbxproj
+          echo "=== CODE_SIGN_STYLE entries ==="
+          grep -n "CODE_SIGN_STYLE" Unity-iPhone.xcodeproj/project.pbxproj
 
       - name: Run xcodebuild
         run: |
@@ -117,10 +144,12 @@ jobs:
             -destination generic/platform=iOS \
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
-            -archivePath /Users/runner/work/_temp/app.xcarchive
+            -archivePath /Users/runner/work/_temp/app.xcarchive \
+            -allowProvisioningUpdates
 
       - name: Export IPA
         run: |
