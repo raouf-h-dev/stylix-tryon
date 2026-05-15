@@ -55,9 +55,6 @@ jobs:
           with open("Unity-iPhone.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
 
-          # Force all CODE_SIGN_STYLE to Manual first (sed handles the simple case)
-          # Then we'll selectively set UnityFramework back to Automatic below
-
           # 1. Set bundle ID everywhere
           content = re.sub(
               r"(PRODUCT_BUNDLE_IDENTIFIER = )[^;]+(;)",
@@ -68,7 +65,7 @@ jobs:
           # 2. Set Manual signing everywhere
           content = re.sub(r"CODE_SIGN_STYLE = \w+;", "CODE_SIGN_STYLE = Manual;", content)
 
-          # 3. Set provisioning profile UUID everywhere it appears
+          # 3. Set provisioning profile UUID everywhere
           content = re.sub(
               r'PROVISIONING_PROFILE = [^;]*;',
               f'PROVISIONING_PROFILE = "{uuid}";',
@@ -82,42 +79,72 @@ jobs:
               content
           )
 
-          # 5. Find UnityFramework's XCBuildConfiguration block IDs and set them to Automatic
-          # Find the PBXNativeTarget for UnityFramework and get its configurationList
-          uf_target = re.search(
-              r'/\* UnityFramework \*/ = \{[^}]*?buildConfigurationList = ([A-F0-9]{24})',
-              content, re.DOTALL
-          )
-          if uf_target:
-              uf_list_id = uf_target.group(1)
-              # Get the config IDs from that list
-              list_block = re.search(
-                  rf'{uf_list_id} /\* Build configuration list[^;]*?\}};',
-                  content, re.DOTALL
-              ).group(0)
-              uf_config_ids = re.findall(r'([A-F0-9]{24}) /\* (?:Debug|Release) \*/', list_block)
-              print(f"UnityFramework config IDs: {uf_config_ids}")
+          # 5. Find UnityFramework config list ID from PBXNativeTarget section
+          # Print a snippet around UnityFramework to diagnose format
+          uf_idx = content.find("UnityFramework")
+          print(f"First 'UnityFramework' occurrence context:")
+          print(content[max(0,uf_idx-50):uf_idx+200])
+          print("---")
 
-              for cfg_id in uf_config_ids:
-                  # In each UnityFramework config block, set Automatic and remove profile UUID
-                  def patch_uf(m):
-                      block = m.group(0)
-                      block = block.replace("CODE_SIGN_STYLE = Manual;", "CODE_SIGN_STYLE = Automatic;")
-                      block = re.sub(r'PROVISIONING_PROFILE = [^;]*;', 'PROVISIONING_PROFILE = "";', block)
-                      return block
-                  content = re.sub(
-                      rf'{cfg_id} /\* (?:Debug|Release) \*/ = \{{.*?\}};',
-                      patch_uf,
-                      content,
-                      flags=re.DOTALL
-                  )
-                  print(f"Set UnityFramework config {cfg_id} to Automatic")
+          # Try multiple patterns for the native target block
+          uf_list_id = None
+          for pattern in [
+              r'/\* UnityFramework \*/ = \{[^}]*?buildConfigurationList = ([A-F0-9]{24})',
+              r'name = UnityFramework;[^}]*?buildConfigurationList = ([A-F0-9]{24})',
+              r'buildConfigurationList = ([A-F0-9]{24})[^}]*?name = UnityFramework',
+          ]:
+              m = re.search(pattern, content, re.DOTALL)
+              if m:
+                  uf_list_id = m.group(1)
+                  print(f"Found UnityFramework configurationList ID: {uf_list_id} (pattern: {pattern[:40]})")
+                  break
+
+          if not uf_list_id:
+              print("WARNING: Could not find UnityFramework configurationList. Printing all configurationList lines:")
+              for line in content.splitlines():
+                  if "configurationList" in line or "UnityFramework" in line:
+                      print(line)
+          else:
+              # Find the block for that list ID — try flexible patterns
+              list_block = None
+              for pattern in [
+                  rf'{uf_list_id} /\* Build configuration list.*?\}};',
+                  rf'{uf_list_id} /\*.*?\*/ = \{{.*?\}};',
+                  rf'{uf_list_id}[^\n]*\n.*?\}};',
+              ]:
+                  m = re.search(pattern, content, re.DOTALL)
+                  if m:
+                      list_block = m.group(0)
+                      print(f"Found list block ({len(list_block)} chars)")
+                      print(list_block[:300])
+                      break
+
+              if not list_block:
+                  print("WARNING: Could not find list block. Printing 500 chars after list ID:")
+                  idx = content.find(uf_list_id)
+                  print(content[idx:idx+500])
+              else:
+                  uf_config_ids = re.findall(r'([A-F0-9]{24}) /\* (?:Debug|Release) \*/', list_block)
+                  print(f"UnityFramework config IDs: {uf_config_ids}")
+
+                  for cfg_id in uf_config_ids:
+                      def patch_uf(m):
+                          block = m.group(0)
+                          block = block.replace("CODE_SIGN_STYLE = Manual;", "CODE_SIGN_STYLE = Automatic;")
+                          block = re.sub(r'PROVISIONING_PROFILE = [^;]*;', 'PROVISIONING_PROFILE = "";', block)
+                          return block
+                      content = re.sub(
+                          rf'{cfg_id} /\* (?:Debug|Release) \*/ = \{{.*?\}};',
+                          patch_uf,
+                          content,
+                          flags=re.DOTALL
+                      )
+                      print(f"Set UnityFramework config {cfg_id} to Automatic")
 
           with open("Unity-iPhone.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
 
-          print("Patch complete.")
-          print("CODE_SIGN_STYLE entries:")
+          print("\nPatch complete. CODE_SIGN_STYLE entries:")
           for line in content.splitlines():
               if "CODE_SIGN_STYLE" in line:
                   print(line)
