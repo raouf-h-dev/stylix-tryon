@@ -37,6 +37,13 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
+      - name: Force Automatic signing in pbxproj
+        run: |
+          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' \
+            Unity-iPhone.xcodeproj/project.pbxproj
+          echo "CODE_SIGN_STYLE entries after patch:"
+          grep "CODE_SIGN_STYLE" Unity-iPhone.xcodeproj/project.pbxproj
+
       - name: Run xcodebuild
         run: |
           xcodebuild \
@@ -47,7 +54,8 @@ jobs:
             CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
-            -archivePath /Users/runner/work/_temp/app.xcarchive
+            -archivePath /Users/runner/work/_temp/app.xcarchive \
+            -allowProvisioningUpdates
 
       - name: Export IPA
         run: |
@@ -55,7 +63,8 @@ jobs:
             -exportArchive \
             -archivePath /Users/runner/work/_temp/app.xcarchive \
             -exportPath /Users/runner/work/_temp/ipa \
-            -exportOptionsPlist ExportOptions.plist
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
