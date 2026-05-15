@@ -54,6 +54,19 @@ jobs:
           ls ~/Library/MobileDevice/Provisioning\ Profiles/
           ls ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
 
+      - name: Diagnose provisioning profile
+        run: |
+          security cms -D -i /tmp/profile.mobileprovision | grep -E \
+            "Name|UUID|TeamIdentifier|application-identifier|ExpirationDate|DeveloperCertificates" \
+            -A2 | head -60
+          
+          echo "=== Certificate in keychain ==="
+          security find-identity -v -p codesigning build.keychain
+          
+          echo "=== Profile expiry ==="
+          security cms -D -i /tmp/profile.mobileprovision \
+            | grep -A1 "ExpirationDate" | grep string
+
       - name: Patch pbxproj
         run: |
           PBXPROJ="Unity-iPhone.xcodeproj/project.pbxproj"
