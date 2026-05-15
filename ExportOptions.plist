@@ -6,12 +6,5 @@
     <string>development</string>
     <key>teamID</key>
     <string>39Z5QDFQQG</string>
-    <key>signingStyle</key>
-    <string>manual</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.stylix.tryon</key>
-        <string>iOS Team Provisioning Profile: com.stylix.tryon</string>
-    </dict>
 </dict>
 </plist>
