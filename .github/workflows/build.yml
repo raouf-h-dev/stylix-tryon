@@ -11,24 +11,41 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout repository with LFS
+      # 1. Checkout without LFS (we'll do it manually)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          lfs: true          # Git LFS files are automatically downloaded
+          lfs: false
 
-      - name: Verify static libraries (just check they are not tiny pointers)
+      # 2. Install Git LFS and authenticate with GITHUB_TOKEN
+      - name: Pull LFS files with authentication
+        run: |
+          git lfs install
+          # Tell Git LFS to use the GitHub token for authentication
+          git config --global lfs.https://github.com/${{ github.repository }}.git/info/lfs.access basic
+          git config --global http.https://github.com/.extraheader "Authorization: bearer ${{ secrets.GITHUB_TOKEN }}"
+          # Download all LFS objects
+          git lfs fetch --all
+          git lfs checkout
+
+      # 3. Verify that the static libraries are now real binaries (not pointers)
+      - name: Verify static libraries
         run: |
           for lib in Libraries/*.a Libraries/**/*.a; do
             if [ -f "$lib" ]; then
               size=$(stat -f%z "$lib")
+              echo "$lib : $size bytes"
               if [ "$size" -lt 5000 ]; then
-                echo "❌ $lib is too small ($size bytes) – probably an LFS pointer"
+                echo "❌ $lib is still an LFS pointer (too small)"
+                echo "First 200 bytes:"
+                head -c 200 "$lib"
                 exit 1
               fi
-              echo "✅ $lib looks OK ($size bytes)"
             fi
           done
+          echo "✅ All library files are valid"
 
+      # 4. Install certificate
       - name: Install certificate
         env:
           P12_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
@@ -43,6 +60,7 @@ jobs:
           security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
 
+      # 5. Install provisioning profile
       - name: Install provisioning profile
         env:
           PROVISION_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
@@ -54,11 +72,13 @@ jobs:
           echo "$PROVISION_BASE64" | base64 --decode > \
             ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/profile.mobileprovision
 
+      # 6. Force automatic signing
       - name: Force Automatic signing
         run: |
           sed -i '' 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' \
             Unity-iPhone.xcodeproj/project.pbxproj
 
+      # 7. Create ExportOptions.plist (required for export)
       - name: Create ExportOptions.plist
         run: |
           cat > ExportOptions.plist <<EOF
@@ -79,6 +99,7 @@ jobs:
           </plist>
           EOF
 
+      # 8. Build archive
       - name: Run xcodebuild archive
         run: |
           xcodebuild \
@@ -91,6 +112,7 @@ jobs:
             archive \
             -archivePath $RUNNER_TEMP/app.xcarchive
 
+      # 9. Export IPA
       - name: Export IPA
         run: |
           xcodebuild \
@@ -99,6 +121,7 @@ jobs:
             -exportPath $RUNNER_TEMP/ipa \
             -exportOptionsPlist ExportOptions.plist
 
+      # 10. Upload IPA
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
