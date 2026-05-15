@@ -14,14 +14,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          lfs: true
-      - name: Pull LFS files
+          lfs: false
+
+      - name: Validate static libraries
+        run: |
+          for lib in Libraries/*.a Libraries/**/*.a; do
+            if [ -f "$lib" ]; then
+              echo "Checking $lib"
+              file "$lib"
+              # ar -t lists object files inside the archive; fails if invalid
+              ar -t "$lib" > /dev/null || { echo "❌ $lib is invalid"; exit 1; }
+            fi
+          done
+      - name: Pull LFS files (force)
         run: |
           git lfs install
-          git lfs pull
-          echo "=== Verify libraries are real binaries ==="
-          ls -lh Libraries/*.a 2>/dev/null | head -10
-          head -c 8 Libraries/libiPhone-lib.a | xxd
+          git lfs fetch --all   # fetch all LFS objects from remote
+          git lfs checkout      # replace pointers with actual files
+          echo "=== Verify a few .a files ==="
+          file Libraries/libiPhone-lib.a
+          file Libraries/baselib.a
+          # Ensure they are Mach-O archives (not ASCII text)
+          if file Libraries/libiPhone-lib.a | grep -q "ASCII text"; then
+            echo "❌ libiPhone-lib.a is still an LFS pointer – LFS not working correctly"
+            exit 1
+          fi
               
       - name: Check library files
         run: |
