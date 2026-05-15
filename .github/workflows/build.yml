@@ -34,32 +34,66 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo $PROVISION_BASE64 | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
-      - name: Extract profile UUID
-        run: |
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision))
-          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
-          echo "Profile UUID is: $PROFILE_UUID"
-
-      - name: Patch Xcode project for UnityFramework
+      - name: Patch Xcode project
         run: |
           python3 - <<'EOF'
-          import re
+          import re, subprocess, os
 
-          with open('Unity-iPhone.xcodeproj/project.pbxproj', 'r') as f:
-              content = f.read()
-
-          # Fix UnityFramework - set it to automatic so it doesn't need a provisioning profile
-          content = re.sub(
-              r'(\/\* UnityFramework \*\/ = \{[^}]*?CODE_SIGN_STYLE = )Manual(;)',
-              r'\1Automatic\2',
-              content,
-              flags=re.DOTALL
+          profile_path = os.path.expanduser(
+              "~/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
           )
 
-          with open('Unity-iPhone.xcodeproj/project.pbxproj', 'w') as f:
+          # Decode the profile
+          result = subprocess.run(
+              ["security", "cms", "-D", "-i", profile_path],
+              capture_output=True, text=True
+          )
+          plist_text = result.stdout
+
+          # Extract UUID
+          uuid = re.search(r"<key>UUID</key>\s*<string>([^<]+)</string>", plist_text).group(1)
+          print(f"Profile UUID: {uuid}")
+
+          # Extract expected bundle ID
+          raw_app_id = re.search(
+              r"<key>application-identifier</key>\s*<string>([^<]+)</string>", plist_text
+          ).group(1)
+          bundle_id = raw_app_id.split(".", 1)[1]  # strip team prefix e.g. "39Z5QDFQQG."
+          print(f"Profile bundle ID: {bundle_id}")
+
+          with open("Unity-iPhone.xcodeproj/project.pbxproj", "r") as f:
+              content = f.read()
+
+          # Fix bundle ID — replace whatever Unity set, but NOT UnityFramework's entry
+          content = re.sub(
+              r"(PRODUCT_BUNDLE_IDENTIFIER = )(?!" + re.escape(bundle_id) + r"\.)([^;]+)(;)",
+              lambda m: f"{m.group(1)}{bundle_id}{m.group(3)}",
+              content
+          )
+
+          # Write UUID directly into the project for Unity-iPhone (Manual signing)
+          content = re.sub(
+              r"PROVISIONING_PROFILE = [^;]*;",
+              f'PROVISIONING_PROFILE = "{uuid}";',
+              content
+          )
+          content = re.sub(
+              r"PROVISIONING_PROFILE_SPECIFIER = [^;]*;",
+              'PROVISIONING_PROFILE_SPECIFIER = "";',
+              content
+          )
+
+          # Set UnityFramework to Automatic so it doesn't need a profile
+          content = re.sub(
+              r"(UnityFramework[^\n]*\n(?:[^\n]*\n){0,30}?CODE_SIGN_STYLE = )Manual",
+              r"\1Automatic",
+              content
+          )
+
+          with open("Unity-iPhone.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
 
-          print("Patched UnityFramework signing style")
+          print("Patching complete.")
           EOF
 
       - name: Run xcodebuild
@@ -70,12 +104,10 @@ jobs:
             -configuration Release \
             -destination generic/platform=iOS \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE="$PROFILE_UUID" \
             CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
-            -archivePath /Users/runner/work/_temp/app.xcarchive \
-            -allowProvisioningUpdates
+            -archivePath /Users/runner/work/_temp/app.xcarchive
 
       - name: Export IPA
         run: |
@@ -83,8 +115,7 @@ jobs:
             -exportArchive \
             -archivePath /Users/runner/work/_temp/app.xcarchive \
             -exportPath /Users/runner/work/_temp/ipa \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates
+            -exportOptionsPlist ExportOptions.plist
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
