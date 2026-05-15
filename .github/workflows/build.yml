@@ -32,17 +32,96 @@ jobs:
         env:
           PROVISION_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
         run: |
-          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
-          echo "$PROVISION_BASE64" | base64 --decode > $PP_PATH
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          echo "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
 
-      - name: Force Automatic signing in pbxproj
+          # Extract UUID and install with UUID filename (required for Manual signing lookup)
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" \
+            /dev/stdin <<< $(security cms -D -i /tmp/profile.mobileprovision))
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+
+          cp /tmp/profile.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+          echo "Installed as ${PROFILE_UUID}.mobileprovision"
+
+      - name: Patch pbxproj — Manual signing for Unity-iPhone only
         run: |
-          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' \
-            Unity-iPhone.xcodeproj/project.pbxproj
-          echo "CODE_SIGN_STYLE entries after patch:"
-          grep "CODE_SIGN_STYLE" Unity-iPhone.xcodeproj/project.pbxproj
+          python3 - <<'EOF'
+          import re, os
+
+          uuid = os.environ["PROFILE_UUID"]
+          bundle_id = "com.stylix.tryon"
+
+          with open("Unity-iPhone.xcodeproj/project.pbxproj", "r") as f:
+              content = f.read()
+
+          # Force all CODE_SIGN_STYLE to Manual first (sed handles the simple case)
+          # Then we'll selectively set UnityFramework back to Automatic below
+
+          # 1. Set bundle ID everywhere
+          content = re.sub(
+              r"(PRODUCT_BUNDLE_IDENTIFIER = )[^;]+(;)",
+              lambda m: f"{m.group(1)}{bundle_id}{m.group(2)}",
+              content
+          )
+
+          # 2. Set Manual signing everywhere
+          content = re.sub(r"CODE_SIGN_STYLE = \w+;", "CODE_SIGN_STYLE = Manual;", content)
+
+          # 3. Set provisioning profile UUID everywhere it appears
+          content = re.sub(
+              r'PROVISIONING_PROFILE = [^;]*;',
+              f'PROVISIONING_PROFILE = "{uuid}";',
+              content
+          )
+
+          # 4. Clear specifier
+          content = re.sub(
+              r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
+              'PROVISIONING_PROFILE_SPECIFIER = "";',
+              content
+          )
+
+          # 5. Find UnityFramework's XCBuildConfiguration block IDs and set them to Automatic
+          # Find the PBXNativeTarget for UnityFramework and get its configurationList
+          uf_target = re.search(
+              r'/\* UnityFramework \*/ = \{[^}]*?buildConfigurationList = ([A-F0-9]{24})',
+              content, re.DOTALL
+          )
+          if uf_target:
+              uf_list_id = uf_target.group(1)
+              # Get the config IDs from that list
+              list_block = re.search(
+                  rf'{uf_list_id} /\* Build configuration list[^;]*?\}};',
+                  content, re.DOTALL
+              ).group(0)
+              uf_config_ids = re.findall(r'([A-F0-9]{24}) /\* (?:Debug|Release) \*/', list_block)
+              print(f"UnityFramework config IDs: {uf_config_ids}")
+
+              for cfg_id in uf_config_ids:
+                  # In each UnityFramework config block, set Automatic and remove profile UUID
+                  def patch_uf(m):
+                      block = m.group(0)
+                      block = block.replace("CODE_SIGN_STYLE = Manual;", "CODE_SIGN_STYLE = Automatic;")
+                      block = re.sub(r'PROVISIONING_PROFILE = [^;]*;', 'PROVISIONING_PROFILE = "";', block)
+                      return block
+                  content = re.sub(
+                      rf'{cfg_id} /\* (?:Debug|Release) \*/ = \{{.*?\}};',
+                      patch_uf,
+                      content,
+                      flags=re.DOTALL
+                  )
+                  print(f"Set UnityFramework config {cfg_id} to Automatic")
+
+          with open("Unity-iPhone.xcodeproj/project.pbxproj", "w") as f:
+              f.write(content)
+
+          print("Patch complete.")
+          print("CODE_SIGN_STYLE entries:")
+          for line in content.splitlines():
+              if "CODE_SIGN_STYLE" in line:
+                  print(line)
+          EOF
 
       - name: Run xcodebuild
         run: |
@@ -51,11 +130,12 @@ jobs:
             -scheme Unity-iPhone \
             -configuration Release \
             -destination generic/platform=iOS \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
-            -archivePath /Users/runner/work/_temp/app.xcarchive \
-            -allowProvisioningUpdates
+            -archivePath /Users/runner/work/_temp/app.xcarchive
 
       - name: Export IPA
         run: |
@@ -63,8 +143,7 @@ jobs:
             -exportArchive \
             -archivePath /Users/runner/work/_temp/app.xcarchive \
             -exportPath /Users/runner/work/_temp/ipa \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates
+            -exportOptionsPlist ExportOptions.plist
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
