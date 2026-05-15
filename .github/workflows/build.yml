@@ -34,6 +34,34 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo $PROVISION_BASE64 | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
+      - name: Extract profile UUID
+        run: |
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision))
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+          echo "Profile UUID is: $PROFILE_UUID"
+
+      - name: Patch Xcode project for UnityFramework
+        run: |
+          python3 - <<'EOF'
+          import re
+
+          with open('Unity-iPhone.xcodeproj/project.pbxproj', 'r') as f:
+              content = f.read()
+
+          # Fix UnityFramework - set it to automatic so it doesn't need a provisioning profile
+          content = re.sub(
+              r'(\/\* UnityFramework \*\/ = \{[^}]*?CODE_SIGN_STYLE = )Manual(;)',
+              r'\1Automatic\2',
+              content,
+              flags=re.DOTALL
+          )
+
+          with open('Unity-iPhone.xcodeproj/project.pbxproj', 'w') as f:
+              f.write(content)
+
+          print("Patched UnityFramework signing style")
+          EOF
+
       - name: Run xcodebuild
         run: |
           xcodebuild \
@@ -42,7 +70,7 @@ jobs:
             -configuration Release \
             -destination generic/platform=iOS \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.BUNDLE_ID }}" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
             CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM=39Z5QDFQQG \
             archive \
