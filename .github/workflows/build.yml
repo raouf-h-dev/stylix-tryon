@@ -68,25 +68,7 @@ jobs:
             Unity-iPhone.xcodeproj/project.pbxproj
 
       # 6. Create ExportOptions.plist (required for IPA export)
-      - name: Create ExportOptions.plist
-        run: |
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>teamID</key>
-            <string>39Z5QDFQQG</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.stylix.tryon</key>
-              <string>profile.mobileprovision</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
+
 
       - name: Unlock keychain for codesign
         run: |
