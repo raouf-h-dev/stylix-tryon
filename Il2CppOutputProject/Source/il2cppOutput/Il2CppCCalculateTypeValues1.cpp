@@ -1211,6 +1211,7 @@ struct SendOrPostCallback_t5C292A12062F24027A98492F52ECFE9802AA6F0E;
 struct SerializationInfo_t3C47F63E24BEB9FCE2DC6309E027F238DC5C5E37;
 struct Shader_tADC867D36B7876EE22427FAA2CE485105F4EE692;
 struct Sheen_t6A775C373FBBE09CB96C5C1FFB5FAA1E9109F081;
+struct Slider_t87EA570E3D6556CABF57456C2F3873FFD86E652F;
 struct SpotLight_t5503AF6C581C43FA11AA2D64344922493F451B16;
 struct Sprite_tAFF74BC83CD68037494CB0B4F28CBDF8971CAB99;
 struct SpriteAsset_t1D3CF1D9DC350A4690CB09DE228A8B59F2F02313;
@@ -4355,7 +4356,7 @@ struct U3CGetEnumeratorU3Ed__18_t3D21A238B89B6FD7744E0134E66ECABD75C6A036  : pub
 	BlockExpressionList_tAD63753518FCCFDCA26EE51E2C0CAD1BF05C4759* ___U3CU3E4__this;
 	int32_t ___U3CiU3E5__2;
 };
-struct U3CCheckDescriptorDelayedU3Ed__78_t86E069EB54D18F9B8587D4F7A373A6CBAAF40AD4  : public RuntimeObject
+struct U3CCheckDescriptorDelayedU3Ed__80_t6FA2CA9169748652374A84D6DC3C0AB2BEFE7A3C  : public RuntimeObject
 {
 	int32_t ___U3CU3E1__state;
 	RuntimeObject* ___U3CU3E2__current;
@@ -25002,6 +25003,7 @@ struct ARClothingUIController_t97916861FEBBE1DFBCAB32333E1A618639F5136E  : publi
 	Button_t6786514A57F7AFDEE5431112FEA0CAB24F5AE098* ___m_ShirtButton;
 	Button_t6786514A57F7AFDEE5431112FEA0CAB24F5AE098* ___m_PantsButton;
 	Button_t6786514A57F7AFDEE5431112FEA0CAB24F5AE098* ___m_DebugButton;
+	Slider_t87EA570E3D6556CABF57456C2F3873FFD86E652F* ___m_ScaleSlider;
 	bool ___m_ShirtOn;
 	bool ___m_PantsOn;
 	bool ___m_DebugOn;
@@ -37239,7 +37241,7 @@ const Il2CppTypeDefinitionSizes g_typeDefinitionSize8361 = { sizeof(UnitySourceG
 extern const Il2CppTypeDefinitionSizes g_typeDefinitionSize8362;
 const Il2CppTypeDefinitionSizes g_typeDefinitionSize8362 = { sizeof(ARClothingUIController_t97916861FEBBE1DFBCAB32333E1A618639F5136E), -1, 0, 0 };
 extern const Il2CppTypeDefinitionSizes g_typeDefinitionSize8363;
-const Il2CppTypeDefinitionSizes g_typeDefinitionSize8363 = { sizeof(U3CCheckDescriptorDelayedU3Ed__78_t86E069EB54D18F9B8587D4F7A373A6CBAAF40AD4), -1, 0, 0 };
+const Il2CppTypeDefinitionSizes g_typeDefinitionSize8363 = { sizeof(U3CCheckDescriptorDelayedU3Ed__80_t6FA2CA9169748652374A84D6DC3C0AB2BEFE7A3C), -1, 0, 0 };
 extern const Il2CppTypeDefinitionSizes g_typeDefinitionSize8364;
 const Il2CppTypeDefinitionSizes g_typeDefinitionSize8364 = { sizeof(BodyTrackingManager_t68E210310B515D495982BB85576B6DF76379EC07), -1, sizeof(BodyTrackingManager_t68E210310B515D495982BB85576B6DF76379EC07_StaticFields), 0 };
 extern const Il2CppTypeDefinitionSizes g_typeDefinitionSize8365;
