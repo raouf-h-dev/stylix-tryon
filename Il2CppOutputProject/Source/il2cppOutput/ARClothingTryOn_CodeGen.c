@@ -24,6 +24,8 @@ extern void ARClothingUIController_TogglePants_m7FEADDB70781D128B5A7B1DD79A65225
 extern void ARClothingUIController_ToggleDebug_m0744F7A8D8BDA8D1180312DA59B61A9DE446EF3E (void);
 extern void ARClothingUIController_UpdateButtonLabel_m84778BC116ED8C0FC261D553A0059FD360CB3C5F (void);
 extern void ARClothingUIController__ctor_mC568B7C948F162BD61C1D7785D9B35560425D522 (void);
+extern void BodyTrackingManager_get_HipsRootAnchor_m966A5FCA27769789961CE3F8888FE98258E8B165 (void);
+extern void BodyTrackingManager_set_HipsRootAnchor_mD9355A5B7227DA302AF3E7007DD2B55FC16DDC9C (void);
 extern void BodyTrackingManager_get_TorsoAnchor_m43BFD13F6012833A46416E11F33F676489FE3E33 (void);
 extern void BodyTrackingManager_set_TorsoAnchor_m1E107AF0464E5E4EF6F335BFB6A800446D838504 (void);
 extern void BodyTrackingManager_get_LeftShoulderAnchor_m6ED785767CD963F9F95723E9916591F386A9EDCF (void);
@@ -56,7 +58,6 @@ extern void BodyTrackingManager_Awake_m27F0E9E2E7053D6DC06D0F92FE55784EABF1FFB7 
 extern void BodyTrackingManager_OnEnable_m80A9713A614AB838F7E1830FCD7CE91404A47045 (void);
 extern void BodyTrackingManager_OnDisable_mE83CA7CFC07B843423926D79005F81C3B30866A1 (void);
 extern void BodyTrackingManager_Start_m5C07267E5EF916ED6D1255A5160C5966C7F714E5 (void);
-extern void BodyTrackingManager_CheckDescriptorDelayed_m3E635A7E83BDD5A0553269C8BB9BF702D64FD840 (void);
 extern void BodyTrackingManager_AppendStatus_mAFAAFDDFDDC9833357477015A0EC66869BAF2CA8 (void);
 extern void BodyTrackingManager_OnLogMessage_mA9EC8AD6E3C96975AC01DF5B5B987CF402EC26DC (void);
 extern void BodyTrackingManager_OnDestroy_mC8F05CAB3876267275CBF03FF6B2CEE84226AC77 (void);
@@ -74,12 +75,6 @@ extern void BodyTrackingManager_RemoveVisualizersForBody_mB0B5B4269EFBF65B5DFEDF
 extern void BodyTrackingManager_ComputeBodyMeasurements_mF3FAD586DEC8DF821A12108B94FE0647FD90AC44 (void);
 extern void BodyTrackingManager__ctor_mA6DFD3EFAAA3BD2204826D871A82887D0DFE79D0 (void);
 extern void BodyTrackingManager__cctor_m7EA03C1E4995330B3F51F7CEB677BD32288015AB (void);
-extern void U3CCheckDescriptorDelayedU3Ed__80__ctor_m42D44337155801AB9018ADB66B41B521E3865F30 (void);
-extern void U3CCheckDescriptorDelayedU3Ed__80_System_IDisposable_Dispose_mC02F7B0D7D7C16333BC4EDFF1313B838FA499276 (void);
-extern void U3CCheckDescriptorDelayedU3Ed__80_MoveNext_m14014210D5451C608CB01022A2595A29AF0838DB (void);
-extern void U3CCheckDescriptorDelayedU3Ed__80_System_Collections_Generic_IEnumeratorU3CSystem_ObjectU3E_get_Current_m0BC7C54089FD0789CA5D3A7CF822B593A9AAE350 (void);
-extern void U3CCheckDescriptorDelayedU3Ed__80_System_Collections_IEnumerator_Reset_m4F776C3CB6B5F7F7D0FE80BF874434E54CE28F96 (void);
-extern void U3CCheckDescriptorDelayedU3Ed__80_System_Collections_IEnumerator_get_Current_mC97C35F82F39FB17A3803FA8B065DFD4FFE952F5 (void);
 extern void ClothingAttachmentController_get_ShirtStatus_m0619AF290D05014206EFA0AA793E924CA1E76614 (void);
 extern void ClothingAttachmentController_get_PantsStatus_m842367EDF067B83AFA7FC14DAEBADE1F160C2136 (void);
 extern void ClothingAttachmentController_Awake_mB6F248BDFE261023F75EDF22107E0401A9268DD5 (void);
@@ -222,7 +217,7 @@ extern void SafeAreaFitter_OnRectTransformDimensionsChange_mBF730E5F9EAEF349CD7D
 extern void SafeAreaFitter_Update_mA7D2A129E8BBD891B4A925A0A2642F823538CB0B (void);
 extern void SafeAreaFitter_Apply_mF27128AE2872B55E014D8628277F10A749FA6E6C (void);
 extern void SafeAreaFitter__ctor_m4E763D80AF6AC1BA7A87386A4E629BB402EE06E3 (void);
-static Il2CppMethodPointer s_methodPointers[210] = 
+static Il2CppMethodPointer s_methodPointers[205] = 
 {
 	UnitySourceGeneratedAssemblyMonoScriptTypes_v1_Get_mD3275A7D04C508C332D51D5903453F8A5D5119A2,
 	UnitySourceGeneratedAssemblyMonoScriptTypes_v1__ctor_m7C645BC015A8AA25B6A7BF7E10D100EC145F528A,
@@ -236,6 +231,8 @@ static Il2CppMethodPointer s_methodPointers[210] =
 	ARClothingUIController_ToggleDebug_m0744F7A8D8BDA8D1180312DA59B61A9DE446EF3E,
 	ARClothingUIController_UpdateButtonLabel_m84778BC116ED8C0FC261D553A0059FD360CB3C5F,
 	ARClothingUIController__ctor_mC568B7C948F162BD61C1D7785D9B35560425D522,
+	BodyTrackingManager_get_HipsRootAnchor_m966A5FCA27769789961CE3F8888FE98258E8B165,
+	BodyTrackingManager_set_HipsRootAnchor_mD9355A5B7227DA302AF3E7007DD2B55FC16DDC9C,
 	BodyTrackingManager_get_TorsoAnchor_m43BFD13F6012833A46416E11F33F676489FE3E33,
 	BodyTrackingManager_set_TorsoAnchor_m1E107AF0464E5E4EF6F335BFB6A800446D838504,
 	BodyTrackingManager_get_LeftShoulderAnchor_m6ED785767CD963F9F95723E9916591F386A9EDCF,
@@ -268,7 +265,6 @@ static Il2CppMethodPointer s_methodPointers[210] =
 	BodyTrackingManager_OnEnable_m80A9713A614AB838F7E1830FCD7CE91404A47045,
 	BodyTrackingManager_OnDisable_mE83CA7CFC07B843423926D79005F81C3B30866A1,
 	BodyTrackingManager_Start_m5C07267E5EF916ED6D1255A5160C5966C7F714E5,
-	BodyTrackingManager_CheckDescriptorDelayed_m3E635A7E83BDD5A0553269C8BB9BF702D64FD840,
 	BodyTrackingManager_AppendStatus_mAFAAFDDFDDC9833357477015A0EC66869BAF2CA8,
 	BodyTrackingManager_OnLogMessage_mA9EC8AD6E3C96975AC01DF5B5B987CF402EC26DC,
 	BodyTrackingManager_OnDestroy_mC8F05CAB3876267275CBF03FF6B2CEE84226AC77,
@@ -286,12 +282,6 @@ static Il2CppMethodPointer s_methodPointers[210] =
 	BodyTrackingManager_ComputeBodyMeasurements_mF3FAD586DEC8DF821A12108B94FE0647FD90AC44,
 	BodyTrackingManager__ctor_mA6DFD3EFAAA3BD2204826D871A82887D0DFE79D0,
 	BodyTrackingManager__cctor_m7EA03C1E4995330B3F51F7CEB677BD32288015AB,
-	U3CCheckDescriptorDelayedU3Ed__80__ctor_m42D44337155801AB9018ADB66B41B521E3865F30,
-	U3CCheckDescriptorDelayedU3Ed__80_System_IDisposable_Dispose_mC02F7B0D7D7C16333BC4EDFF1313B838FA499276,
-	U3CCheckDescriptorDelayedU3Ed__80_MoveNext_m14014210D5451C608CB01022A2595A29AF0838DB,
-	U3CCheckDescriptorDelayedU3Ed__80_System_Collections_Generic_IEnumeratorU3CSystem_ObjectU3E_get_Current_m0BC7C54089FD0789CA5D3A7CF822B593A9AAE350,
-	U3CCheckDescriptorDelayedU3Ed__80_System_Collections_IEnumerator_Reset_m4F776C3CB6B5F7F7D0FE80BF874434E54CE28F96,
-	U3CCheckDescriptorDelayedU3Ed__80_System_Collections_IEnumerator_get_Current_mC97C35F82F39FB17A3803FA8B065DFD4FFE952F5,
 	ClothingAttachmentController_get_ShirtStatus_m0619AF290D05014206EFA0AA793E924CA1E76614,
 	ClothingAttachmentController_get_PantsStatus_m842367EDF067B83AFA7FC14DAEBADE1F160C2136,
 	ClothingAttachmentController_Awake_mB6F248BDFE261023F75EDF22107E0401A9268DD5,
@@ -439,10 +429,10 @@ extern void U3CLoadModelU3Ed__46_MoveNext_m33B4492F44C0DB52DAFEE64594C4F879EFE35
 extern void U3CLoadModelU3Ed__46_SetStateMachine_m5A0E60D08EF4B32E1ECA8E9CAD5A566F7A8AFBAD_AdjustorThunk (void);
 static Il2CppTokenAdjustorThunkPair s_adjustorThunks[2] = 
 {
-	{ 0x060000C6, U3CLoadModelU3Ed__46_MoveNext_m33B4492F44C0DB52DAFEE64594C4F879EFE35448_AdjustorThunk },
-	{ 0x060000C7, U3CLoadModelU3Ed__46_SetStateMachine_m5A0E60D08EF4B32E1ECA8E9CAD5A566F7A8AFBAD_AdjustorThunk },
+	{ 0x060000C1, U3CLoadModelU3Ed__46_MoveNext_m33B4492F44C0DB52DAFEE64594C4F879EFE35448_AdjustorThunk },
+	{ 0x060000C2, U3CLoadModelU3Ed__46_SetStateMachine_m5A0E60D08EF4B32E1ECA8E9CAD5A566F7A8AFBAD_AdjustorThunk },
 };
-static const int32_t s_InvokerIndices[210] = 
+static const int32_t s_InvokerIndices[205] = 
 {
 	16977,
 	10814,
@@ -456,6 +446,8 @@ static const int32_t s_InvokerIndices[210] =
 	10814,
 	15255,
 	10814,
+	10649,
+	8398,
 	10649,
 	8398,
 	10649,
@@ -488,7 +480,6 @@ static const int32_t s_InvokerIndices[210] =
 	10814,
 	10814,
 	10814,
-	10649,
 	8398,
 	2132,
 	10814,
@@ -506,12 +497,6 @@ static const int32_t s_InvokerIndices[210] =
 	10814,
 	10814,
 	16951,
-	8344,
-	10814,
-	10498,
-	10649,
-	10814,
-	10649,
 	10649,
 	10649,
 	10814,
@@ -659,7 +644,7 @@ IL2CPP_EXTERN_C const Il2CppCodeGenModule g_ARClothingTryOn_CodeGenModule;
 const Il2CppCodeGenModule g_ARClothingTryOn_CodeGenModule = 
 {
 	"ARClothingTryOn.dll",
-	210,
+	205,
 	s_methodPointers,
 	2,
 	s_adjustorThunks,
